@@ -1,0 +1,81 @@
+/* Root background (white) */
+.root-atm {
+    -fx-background-color: #ffffff;
+}
+
+/* Header bar */
+.header-atm {
+    -fx-background-color: linear-gradient(to right, #ffffff, #f0f0f0);
+    -fx-padding: 10 16 10 16;
+    -fx-border-color: #28283c;
+    -fx-border-width: 0 0 2 0;
+}
+
+/* Title text */
+.title-atm {
+    -fx-font-family: "Courier New", monospace;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #28283c;
+}
+
+/*Login*/
+.panel-login {
+    -fx-background-color: #f9f9f9;
+    -fx-background-radius: 10;
+    -fx-padding: 16;
+    -fx-border-color: #28283c;
+}
+
+/* Left ATM button panel */
+.panel-left {
+    -fx-background-color: #f9f9f9;
+    -fx-padding: 16;
+    -fx-background-radius: 10;
+    -fx-border-color: #28283c;
+}
+
+/* Chatbot panel */
+.panel-chat {
+    -fx-background-color: #f9f9f9;
+    -fx-border-color: #28283c;
+    -fx-border-width: 2;
+    -fx-background-radius: 10;
+    -fx-padding: 16;
+}
+
+/* ATM buttons */
+.btn-atm {
+    -fx-background-color: #285078;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-background-radius: 8;
+    -fx-padding: 10 14;
+}
+.btn-atm:hover   { -fx-background-color: #1e3f60; }
+.btn-atm:pressed { -fx-background-color: #152d46; }
+.btn-atm:disabled {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #666666;
+}
+
+/* Terminal-like input field */
+.terminal-input {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #141414;
+    -fx-font-family: "Courier New", monospace;
+    -fx-padding: 6 8;
+    -fx-background-radius: 6;
+    -fx-border-color: #28283c;
+    -fx-border-radius: 6;
+}
+
+/* Chatbot text area */
+.terminal-textarea {
+    -fx-text-fill: #141414;
+    -fx-font-family: "Courier New", monospace;
+}
+.terminal-textarea .content {
+    -fx-background-color: #ffffff;
+}
