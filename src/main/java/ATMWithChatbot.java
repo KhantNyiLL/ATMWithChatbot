@@ -19,10 +19,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.Base64;
+
+import static javax.management.remote.JMXConnectorFactory.connect;
 
 /**
  * VAULT-X : ATM + Rule-based Chatbot
@@ -48,7 +54,7 @@ public class ATMWithChatbot extends Application {
         private final byte[] salt;
         private final byte[] passwordHash;
         private double balance;
-        private final List<String> transactionHistory = new ArrayList<>();
+//        private final List<String> transactionHistory = new ArrayList<>();
 
         User(String username, byte[] salt, byte[] passwordHash, double balance) {
             this.username = username;
@@ -56,20 +62,119 @@ public class ATMWithChatbot extends Application {
             this.passwordHash = passwordHash;
             this.balance = balance;
         }
-        public String getUsername() { return username; }
-        public double getBalance() { return balance; }
-        public void deposit(double amount) { balance += amount; }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public double getBalance() {
+            return balance;
+        }
+
+        public void deposit(double amount) {
+            balance += amount;
+        }
+
         public boolean withdraw(double amount) {
-            if (amount <= balance) { balance -= amount; return true; }
+            if (amount <= balance) {
+                balance -= amount;
+                return true;
+            }
             return false;
         }
-        public void addTransaction(String record) { transactionHistory.add(record); }
-        public List<String> getTransactionHistory() { return transactionHistory; }
-        public byte[] getSalt() { return salt; }
-        public byte[] getPasswordHash() { return passwordHash; }
+
+        //remove in memory transaction history heree ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//        public void addTransaction(String record) { transactionHistory.add(record); }
+//        public List<String> getTransactionHistory() { return transactionHistory; }
+        public byte[] getSalt() {
+            return salt;
+        }
+
+        public byte[] getPasswordHash() {
+            return passwordHash;
+        }
     }
 
+    //Load user from SQLite ////////////////////////////////////////////////
+    private User loadUserFromDB(String username) {
+        String sql = "SELECT * FROM users WHERE username = ?";
+        try (Connection conn = DBHelper.connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username.toLowerCase());
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                byte[] salt = rs.getBytes("salt");
+                byte[] hash = rs.getBytes("password_hash");
+                double balance = rs.getDouble("balance");
+                return new User(username, salt, hash, balance);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    //Save/update user to DB///////////////////////////////////////////////////////////////////////////////////////////
+    private void saveUserToDB(User u) {
+        String sql = "INSERT OR REPLACE INTO users (username, salt, password_hash, balance) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DBHelper.connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, u.getUsername().toLowerCase());
+            pstmt.setBytes(2, u.getSalt());
+            pstmt.setBytes(3, u.getPasswordHash());
+            pstmt.setDouble(4, u.getBalance());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //Transactions in DB//////////////////////////////////////////////////////////////////////////////////////////////////////
+    private void saveTransactionToDB(User u, String action) {
+        String sql = "INSERT INTO transactions (username, timestamp, action) VALUES (?, ?, ?)";
+        String timestamp = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").format(java.time.LocalDateTime.now());
+        try (Connection conn = DBHelper.connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, u.getUsername().toLowerCase());
+            pstmt.setString(2, timestamp);
+            pstmt.setString(3, action);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    //Fetch transactions////////////////////////////////////////////////////////////////////////////////////////////////////////
+    private java.util.List<String> fetchTransactions(User u) {
+        java.util.List<String> txs = new java.util.ArrayList<>();
+        String sql = "SELECT timestamp, action FROM transactions WHERE username = ? ORDER BY id ASC";
+        try (Connection conn = DBHelper.connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, u.getUsername().toLowerCase());
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                txs.add("[" + rs.getString("timestamp") + "] " + rs.getString("action"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return txs;
+    }
+
+//    private void refreshTxList() {
+//        if (currentUser == null) {
+//            txList.setItems(javafx.collections.FXCollections.observableArrayList());
+//            return;
+//        }
+//        txList.setItems(javafx.collections.FXCollections.observableArrayList(fetchTransactions(currentUser)));
+//        txList.scrollTo(txList.getItems().size() - 1);
+//    }
+
+
     private final Map<String, User> users = new HashMap<>();
+//    private String currentPin;  // track logged-in user//////////////////////////////////////////////////////////////////////////////////////////////
+
     private User currentUser;
 
     /* ========= UI Controls ========= */
@@ -94,12 +199,15 @@ public class ATMWithChatbot extends Application {
 
     /* ========= App ========= */
 
-    public static void main(String[] args) { launch(args); }
+    public static void main(String[] args) {
+        launch(args);
+    }
 
     @Override
     public void start(Stage stage) {
         // Load users from disk (if file exists)
-        loadUsersFromDisk();
+//        loadUsersFromDisk();
+        DBHelper.initializeDatabase();
 
         // ---- Login & Signup Scene ----
         TabPane authTabs = new TabPane();
@@ -135,7 +243,8 @@ public class ATMWithChatbot extends Application {
         try {
             URL iconUrl = getClass().getResource("/VAULT_X-LOGO.png");
             if (iconUrl != null) stage.getIcons().add(new Image(iconUrl.toExternalForm()));
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         stage.setTitle("VAULT-X");
         stage.setScene(loginScene);
         stage.setMinWidth(520);
@@ -187,6 +296,11 @@ public class ATMWithChatbot extends Application {
         Button createBtn = new Button("Create Account");
         createBtn.getStyleClass().add("btn-atm");
 
+        //  Make Enter key trigger the button
+        createBtn.setDefaultButton(true);
+        loginUsernameField.setOnAction(e -> loginPasswordField.requestFocus());
+
+
         VBox box = new VBox(12,
                 title,
                 new Label("Username"), signupUsernameField,
@@ -217,6 +331,50 @@ public class ATMWithChatbot extends Application {
         amountField.setPromptText("Enter amount");
         amountField.getStyleClass().add("terminal-input");
 
+        amountField.setOnAction(e -> {
+            if (!requireLoginOrWarn()) return;
+
+            Double amt = parseAmount(amountField.getText());
+            if (amt == null || amt <= 0) {
+                showWarn("Invalid Input", "Enter a positive amount.");
+                return;
+            }
+
+            // Show popup asking Deposit or Withdraw
+            Alert choice = new Alert(Alert.AlertType.CONFIRMATION);
+            choice.setTitle("Choose Action");
+            choice.setHeaderText("Amount entered: $" + fmt(amt));
+            choice.setContentText("Do you want to Deposit or Withdraw?");
+
+            ButtonType depositBtn = new ButtonType("Deposit");
+            ButtonType withdrawBtn = new ButtonType("Withdraw");
+            ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+            choice.getButtonTypes().setAll(depositBtn, withdrawBtn, cancelBtn);
+
+            Optional<ButtonType> result = choice.showAndWait();
+
+            if (result.isPresent()) {
+                if (result.get() == depositBtn) {
+                    currentUser.deposit(amt);
+                    addTx("Deposited: $" + fmt(amt));
+                    showInfo("Deposited", "$" + fmt(amt) + " added.");
+                } else if (result.get() == withdrawBtn) {
+                    if (currentUser.withdraw(amt)) {
+                        addTx("Withdrawn: $" + fmt(amt));
+                        showInfo("Withdrawn", "$" + fmt(amt) + " withdrawn.");
+                    } else {
+                        showWarn("Failed", "Insufficient balance.");
+                    }
+                }
+            }
+
+            amountField.clear();
+            refreshTxList();
+            saveUserToDB(currentUser); // persist
+        });
+
+        /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         VBox atmButtons = new VBox(12,
                 amountField,
                 checkBalanceButton,
@@ -263,7 +421,8 @@ public class ATMWithChatbot extends Application {
         try {
             URL url = getClass().getResource("/VAULT_X-LOGO.png");
             if (url != null) logoView.setImage(new Image(url.toExternalForm()));
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         Label titleLabel = new Label("VAULT-X");
         titleLabel.setFont(Font.font("Courier New", FontWeight.BOLD, 22));
@@ -297,7 +456,7 @@ public class ATMWithChatbot extends Application {
             showInfo("Deposited", "$" + fmt(amt) + " added.");
             amountField.clear();
             refreshTxList();
-            saveUsersToDisk(); // persist
+            saveUserToDB(currentUser); // persist
         });
 
         withdrawButton.setOnAction(e -> {
@@ -312,21 +471,28 @@ public class ATMWithChatbot extends Application {
                 showInfo("Withdrawn", "$" + fmt(amt) + " withdrawn.");
                 amountField.clear();
                 refreshTxList();
-                saveUsersToDisk(); // persist
+                saveUserToDB(currentUser); // persist
             } else {
                 showWarn("Failed", "Insufficient balance.");
             }
         });
 
-        viewTransactionsButton.setOnAction(e -> refreshTxList());
+        viewTransactionsButton.setOnAction(
+                e -> refreshTxList());
 
         logoutButton.setOnAction(e -> {
+            if (currentUser != null)
+                saveUserToDB(currentUser);
+
             currentUser = null;
             currentUserLabel.setText("");
             amountField.clear();
             chatbotArea.clear();
             txList.getItems().clear();
-            saveUsersToDisk(); // persist any pending changes
+
+            loginUsernameField.clear();
+            loginPasswordField.clear();
+
             ((Stage) header.getScene().getWindow()).setScene(loginScene);
         });
 
@@ -348,7 +514,7 @@ public class ATMWithChatbot extends Application {
             showWarn("Login", "Enter username and password.");
             return;
         }
-        User u = users.get(username.toLowerCase(Locale.ROOT));
+        User u = loadUserFromDB(username); ////////////////////////////////////////////////////
         if (u == null) {
             showWarn("Login", "User not found.");
             return;
@@ -383,10 +549,11 @@ public class ATMWithChatbot extends Application {
             showWarn("Sign Up", "Passwords do not match.");
             return;
         }
-        if (users.containsKey(username.toLowerCase(Locale.ROOT))) {
+        if (users.containsKey(username.toLowerCase(Locale.ROOT)) || loadUserFromDB(username) != null) {
             showWarn("Sign Up", "Username already exists.");
             return;
         }
+
         // Optional: basic password strength
         if (pw.length() < 6) {
             showWarn("Sign Up", "Use at least 6 characters.");
@@ -396,8 +563,8 @@ public class ATMWithChatbot extends Application {
         byte[] salt = randomSalt();
         byte[] hash = hashPassword(salt, pw);
         User u = new User(username, salt, hash, 0.0);
-        users.put(username.toLowerCase(Locale.ROOT), u);
-        saveUsersToDisk();
+//        users.put(username.toLowerCase(Locale.ROOT), u);
+        saveUserToDB(u);
         showInfo("Sign Up", "Account created. You can log in now.");
         // Clear fields
         signupUsernameField.clear();
@@ -427,7 +594,10 @@ public class ATMWithChatbot extends Application {
             );
 
         } else if (containsAny(input, "history", "transactions", "recent")) {
-            if (!requireLoginOrWarn()) { chatbotInput.clear(); return; }
+            if (!requireLoginOrWarn()) {
+                chatbotInput.clear();
+                return;
+            }
             response = "Showing your transactions (right panel).";
             refreshTxList();
 
@@ -439,12 +609,18 @@ public class ATMWithChatbot extends Application {
             response = "You have been logged out.";
 
         } else if (containsAny(input, "balance", "check balance", "show balance", "how much")) {
-            if (!requireLoginOrWarn()) { chatbotInput.clear(); return; }
+            if (!requireLoginOrWarn()) {
+                chatbotInput.clear();
+                return;
+            }
             response = "Your current balance is $" + fmt(currentUser.getBalance());
             addTx("Checked balance: $" + fmt(currentUser.getBalance()));
 
         } else if (containsAny(input, "deposit", "top up", "top-up", "add", "credit", "put", "load")) {
-            if (!requireLoginOrWarn()) { chatbotInput.clear(); return; }
+            if (!requireLoginOrWarn()) {
+                chatbotInput.clear();
+                return;
+            }
             double amt = (amount != null ? amount : 100.0);
             if (amt <= 0) {
                 response = "Enter a positive amount.";
@@ -452,19 +628,22 @@ public class ATMWithChatbot extends Application {
                 currentUser.deposit(amt);
                 addTx("Chatbot deposited: $" + fmt(amt));
                 refreshTxList();
-                saveUsersToDisk();
+                saveUserToDB(currentUser);
                 response = "Deposited $" + fmt(amt) + ".";
             }
 
         } else if (containsAny(input, "withdraw", "take out", "take", "minus")) {
-            if (!requireLoginOrWarn()) { chatbotInput.clear(); return; }
+            if (!requireLoginOrWarn()) {
+                chatbotInput.clear();
+                return;
+            }
             double amt = (amount != null ? amount : 100.0);
             if (amt <= 0) {
                 response = "Enter a positive amount.";
             } else if (currentUser.withdraw(amt)) {
                 addTx("Chatbot withdrew: $" + fmt(amt));
                 refreshTxList();
-                saveUsersToDisk();
+                saveUserToDB(currentUser);
                 response = "Withdrew $" + fmt(amt) + ".";
             } else {
                 response = "Insufficient balance.";
@@ -495,18 +674,31 @@ public class ATMWithChatbot extends Application {
 
     private void addTx(String text) {
         if (currentUser != null) {
-            String stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").format(LocalDateTime.now());
-            currentUser.addTransaction("[" + stamp + "] " + text);
+            // Save to DB
+            saveTransactionToDB(currentUser, text);
+            // Refresh transaction list
             refreshTxList();
         }
     }
 
+
+    // NEW SQLITE VERSION
     private void refreshTxList() {
-        if (currentUser == null) { txList.setItems(FXCollections.observableArrayList()); return; }
-        ObservableList<String> items = FXCollections.observableArrayList(currentUser.getTransactionHistory());
+        if (currentUser == null) {
+            txList.setItems(FXCollections.observableArrayList());
+            return;
+        }
+
+        List<String> txs = fetchTransactions(currentUser); // uses your existing method
+
+        ObservableList<String> items = FXCollections.observableArrayList(txs);
         txList.setItems(items);
-        txList.scrollTo(items.size() - 1);
+
+        if (!items.isEmpty()) {
+            txList.scrollTo(items.size() - 1);
+        }
     }
+
 
     private void showInfo(String title, String msg) {
         Alert a = new Alert(Alert.AlertType.INFORMATION);
@@ -515,6 +707,7 @@ public class ATMWithChatbot extends Application {
         a.setContentText(msg);
         a.showAndWait();
     }
+
     private void showWarn(String title, String msg) {
         Alert a = new Alert(Alert.AlertType.WARNING);
         a.setTitle(title);
@@ -528,20 +721,36 @@ public class ATMWithChatbot extends Application {
         return false;
     }
 
-    private String safe(String s) { return s == null ? "" : s.trim(); }
-    private String fmt(double v) { return String.format(Locale.US, "%.2f", v); }
+    private String safe(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    private String fmt(double v) {
+        return String.format(Locale.US, "%.2f", v);
+    }
 
     private Double parseAmount(String text) {
-        try { return extractAmount(text); } catch (Exception e) { return null; }
+        try {
+            return extractAmount(text);
+        } catch (Exception e) {
+            return null;
+        }
     }
-    /** Extracts first number from text like "$1,200.50" */
+
+    /**
+     * Extracts first number from text like "$1,200.50"
+     */
     private Double extractAmount(String text) {
         if (text == null) return null;
         java.util.regex.Pattern p = java.util.regex.Pattern.compile("\\$?\\s*([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)(?:\\.[0-9]{1,2})?");
         java.util.regex.Matcher m = p.matcher(text);
         if (!m.find()) return null;
         String num = m.group().replaceAll("[,$\\s]", "");
-        try { return Double.parseDouble(num); } catch (NumberFormatException e) { return null; }
+        try {
+            return Double.parseDouble(num);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /* ========= Passwords ========= */
@@ -551,6 +760,7 @@ public class ATMWithChatbot extends Application {
         new SecureRandom().nextBytes(salt);
         return salt;
     }
+
     private byte[] hashPassword(byte[] salt, String password) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -561,6 +771,7 @@ public class ATMWithChatbot extends Application {
             throw new RuntimeException("Hashing error", e);
         }
     }
+
     private boolean verifyPassword(byte[] salt, byte[] expectedHash, String candidatePassword) {
         return Arrays.equals(expectedHash, hashPassword(salt, candidatePassword));
     }
@@ -577,7 +788,7 @@ public class ATMWithChatbot extends Application {
             byte[] s2 = randomSalt();
             byte[] h2 = hashPassword(s2, "5678");
             users.put("sam".toLowerCase(Locale.ROOT), new User("sam", s2, h2, 750));
-            saveUsersToDisk();
+            saveUserToDB(currentUser);
             return;
         }
         try {
@@ -598,24 +809,36 @@ public class ATMWithChatbot extends Application {
         }
     }
 
-    private void saveUsersToDisk() {
-        try {
-            List<String> lines = new ArrayList<>();
-            lines.add("# VAULT-X users database");
-            for (User u : users.values()) {
-                String saltB64 = Base64.getEncoder().encodeToString(u.getSalt());
-                String hashB64 = Base64.getEncoder().encodeToString(u.getPasswordHash());
-                String line = String.join("|",
-                        u.getUsername(),
-                        saltB64,
-                        hashB64,
-                        String.format(Locale.US, "%.2f", u.getBalance())
-                );
-                lines.add(line);
-            }
-            Files.write(DB_PATH, lines, StandardCharsets.UTF_8);
-        } catch (Exception e) {
+//    private void saveUsersToDisk() {
+//        try {
+//            List<String> lines = new ArrayList<>();
+//            lines.add("# VAULT-X users database");
+//            for (User u : users.values()) {
+//                String saltB64 = Base64.getEncoder().encodeToString(u.getSalt());
+//                String hashB64 = Base64.getEncoder().encodeToString(u.getPasswordHash());
+//                String line = String.join("|",
+//                        u.getUsername(),
+//                        saltB64,
+//                        hashB64,
+//                        String.format(Locale.US, "%.2f", u.getBalance())
+//                );
+//                lines.add(line);
+//            }
+//            Files.write(DB_PATH, lines, StandardCharsets.UTF_8);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//    }
+
+    public static void createUser(String pin, String password) {
+        String sql = "INSERT OR IGNORE INTO users (pin, balance) VALUES (?, 0)";
+        try (Connection conn = DBHelper.connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, pin);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 }
