@@ -172,7 +172,7 @@ public class ATMWithChatbot extends Application {
 //    }
 
 
-    private final Map<String, User> users = new HashMap<>();
+//    private final Map<String, User> users = new HashMap<>();
 //    private String currentPin;  // track logged-in user//////////////////////////////////////////////////////////////////////////////////////////////
 
     private User currentUser;
