@@ -27,6 +27,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.Base64;
+import javafx.event.EventHandler;
+
+
 
 import static javax.management.remote.JMXConnectorFactory.connect;
 
@@ -312,14 +315,76 @@ public class ATMWithChatbot extends Application {
 
     private VBox buildAtmRoot(Stage stage) {
         // Left panel (ATM controls)
+
+
+        // Quick amount buttons
+        Button btn500 = new Button("500");
+        Button btn2000 = new Button("2000");
+        Button btn5000 = new Button("5000");
+        Button btn10000 = new Button("10000");
+
+
+
+       /* for (Button b : Arrays.asList(btn500, btn2000, btn5000, btn10000)) {
+            b.getStyleClass().add("btn-atm");
+            b.setMaxWidth(Double.MAX_VALUE); // make them same width
+        }*/
+
+// Reusable handler
+        EventHandler<javafx.event.ActionEvent> quickHandler = e -> {
+            if (!requireLoginOrWarn()) return;
+
+            Button src = (Button) e.getSource();
+            double amt = Double.parseDouble(src.getText());
+
+            // Pop-up choice
+            Alert choice = new Alert(Alert.AlertType.CONFIRMATION);
+            choice.setTitle("Choose Action");
+            choice.setHeaderText("Amount selected: $" + fmt(amt));
+            choice.setContentText("Do you want to Deposit or Withdraw?");
+
+            ButtonType depositBtn = new ButtonType("Deposit");
+            ButtonType withdrawBtn = new ButtonType("Withdraw");
+            ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+            choice.getButtonTypes().setAll(depositBtn, withdrawBtn, cancelBtn);
+
+            Optional<ButtonType> result = choice.showAndWait();
+
+            if (result.isPresent()) {
+                if (result.get() == depositBtn) {
+                    currentUser.deposit(amt);
+                    addTx("Deposited: $" + fmt(amt));
+                    showInfo("Deposited", "$" + fmt(amt) + " added.");
+                } else if (result.get() == withdrawBtn) {
+                    if (currentUser.withdraw(amt)) {
+                        addTx("Withdrawn: $" + fmt(amt));
+                        showInfo("Withdrawn", "$" + fmt(amt) + " withdrawn.");
+                    } else {
+                        showWarn("Failed", "Insufficient balance.");
+                    }
+                }
+            }
+
+            refreshTxList();
+            saveUserToDB(currentUser);
+        };
+
+// Assign handler to all quick buttons
+        btn500.setOnAction(quickHandler);
+        btn2000.setOnAction(quickHandler);
+        btn5000.setOnAction(quickHandler);
+        btn10000.setOnAction(quickHandler);
+
         Button checkBalanceButton = new Button("Check Balance");
         Button depositButton = new Button("Deposit");
         Button withdrawButton = new Button("Withdraw");
         Button viewTransactionsButton = new Button("View Transactions");
         Button logoutButton = new Button("Logout");
 
-        for (Button b : Arrays.asList(checkBalanceButton, depositButton, withdrawButton, viewTransactionsButton, logoutButton)) {
+        for (Button b : Arrays.asList(checkBalanceButton, depositButton, withdrawButton, viewTransactionsButton, logoutButton, btn500, btn2000, btn5000, btn10000)) {
             b.getStyleClass().add("btn-atm");
+            b.setMaxWidth(Double.MAX_VALUE);
         }
 
         amountField.setPromptText("Enter amount");
@@ -371,6 +436,7 @@ public class ATMWithChatbot extends Application {
         /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         VBox atmButtons = new VBox(12,
                 amountField,
+                btn500,btn2000,btn5000,btn10000,
                 checkBalanceButton,
                 depositButton,
                 withdrawButton,
@@ -380,6 +446,7 @@ public class ATMWithChatbot extends Application {
         atmButtons.setPadding(new Insets(16));
         atmButtons.setPrefWidth(280);
         atmButtons.getStyleClass().add("panel-left");
+        atmButtons.setFillWidth(true);
 
         // Chatbot
         chatbotArea.setEditable(false);
