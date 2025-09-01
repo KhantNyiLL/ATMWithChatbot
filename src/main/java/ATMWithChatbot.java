@@ -30,13 +30,7 @@ import java.util.Base64;
 
 import static javax.management.remote.JMXConnectorFactory.connect;
 
-/**
- * VAULT-X : ATM + Rule-based Chatbot
- * Adds:
- * - Sign Up (username + password)
- * - Secure password storage (salted SHA-256)
- * - Persistent storage of users & balances (~/.vaultx_users.db)
- */
+
 public class ATMWithChatbot extends Application {
 
     /* ========= Persistence ========= */
@@ -514,7 +508,7 @@ public class ATMWithChatbot extends Application {
             showWarn("Login", "Enter username and password.");
             return;
         }
-        User u = loadUserFromDB(username); ////////////////////////////////////////////////////
+        User u = loadUserFromDB(username);
         if (u == null) {
             showWarn("Login", "User not found.");
             return;
@@ -549,8 +543,8 @@ public class ATMWithChatbot extends Application {
             showWarn("Sign Up", "Passwords do not match.");
             return;
         }
-        if (users.containsKey(username.toLowerCase(Locale.ROOT)) || loadUserFromDB(username) != null) {
-            showWarn("Sign Up", "Username already exists.");
+        if ( loadUserFromDB(username) != null) {
+           showWarn("Sign Up", "Username already exists.");
             return;
         }
 
@@ -742,16 +736,37 @@ public class ATMWithChatbot extends Application {
      */
     private Double extractAmount(String text) {
         if (text == null) return null;
-        java.util.regex.Pattern p = java.util.regex.Pattern.compile("\\$?\\s*([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)(?:\\.[0-9]{1,2})?");
-        java.util.regex.Matcher m = p.matcher(text);
+
+        // Normalize any weird spaces (e.g., non-breaking)
+        text = text.replaceAll("[\\u00A0\\u2007\\u202F]", " ");
+
+        // 1) Support "30k" / "2.5k" style
+        java.util.regex.Matcher km = java.util.regex.Pattern
+                .compile("(?i)\\b([0-9]+(?:\\.[0-9]+)?)\\s*k\\b")
+                .matcher(text);
+        if (km.find()) {
+            try { return Double.parseDouble(km.group(1)) * 1000.0; }
+            catch (NumberFormatException ignore) {}
+        }
+
+        // 2) General number matcher: $ 30,000.50  |  30000  |  30 000  |  250.75
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(-?)\\s*\\$?\\s*((?:\\d{1,3}(?:[ ,]\\d{3})+)|\\d+)(?:\\.(\\d{1,2}))?")
+                .matcher(text);
         if (!m.find()) return null;
-        String num = m.group().replaceAll("[,$\\s]", "");
+
+        String sign   = m.group(1) == null ? "" : m.group(1);
+        String intPart = m.group(2).replaceAll("[ ,]", ""); // remove commas/spaces
+        String frac    = m.group(3);
+
+        String number = sign + intPart + (frac != null ? "." + frac : "");
         try {
-            return Double.parseDouble(num);
+            return Double.parseDouble(number);
         } catch (NumberFormatException e) {
             return null;
         }
     }
+
 
     /* ========= Passwords ========= */
 
@@ -778,7 +793,7 @@ public class ATMWithChatbot extends Application {
 
     /* ========= Persistence (File I/O) ========= */
 
-    private void loadUsersFromDisk() {
+    /*private void loadUsersFromDisk() {
         users.clear();
         if (!Files.exists(DB_PATH)) {
             // Optional: seed demo accounts (for convenience)
@@ -807,30 +822,29 @@ public class ATMWithChatbot extends Application {
             e.printStackTrace();
             // If file corrupt, start fresh (but keep the file as-is).
         }
-    }
+    }*/
 
-//    private void saveUsersToDisk() {
-//        try {
-//            List<String> lines = new ArrayList<>();
-//            lines.add("# VAULT-X users database");
-//            for (User u : users.values()) {
-//                String saltB64 = Base64.getEncoder().encodeToString(u.getSalt());
-//                String hashB64 = Base64.getEncoder().encodeToString(u.getPasswordHash());
-//                String line = String.join("|",
-//                        u.getUsername(),
-//                        saltB64,
-//                        hashB64,
-//                        String.format(Locale.US, "%.2f", u.getBalance())
-//                );
-//                lines.add(line);
-//            }
-//            Files.write(DB_PATH, lines, StandardCharsets.UTF_8);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
+/*   private void saveUsersToDisk() {
+        try {
+            List<String> lines = new ArrayList<>();
+            lines.add("# VAULT-X users database");
+            for (User u : users.values()) {
+                String saltB64 = Base64.getEncoder().encodeToString(u.getSalt());
+               String hashB64 = Base64.getEncoder().encodeToString(u.getPasswordHash());
+                String line = String.join("|",
+                       u.getUsername(),
+                        saltB64,
+                       hashB64,
+                        String.format(Locale.US, "%.2f", u.getBalance())
+               );
+              lines.add(line);
+            }
+            Files.write(DB_PATH, lines, StandardCharsets.UTF_8);
+      } catch (Exception e) {
+            e.printStackTrace();
+  }*/
 
-    public static void createUser(String pin, String password) {
+public static void createUser(String pin, String password) {
         String sql = "INSERT OR IGNORE INTO users (pin, balance) VALUES (?, 0)";
         try (Connection conn = DBHelper.connect();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
