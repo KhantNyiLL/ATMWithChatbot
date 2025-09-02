@@ -1,81 +1,135 @@
-/* Root background (white) */
+
+/* Root / App Background              */
+
 .root-atm {
-    -fx-background-color: #ffffff;
+    -fx-background-color: #f5f5f5; /* light grey, neutral ATM feel */
+    -fx-font-family: "Segoe UI", sans-serif;
 }
 
-/* Header bar */
+
+/* Header Bar                         */
+
 .header-atm {
-    -fx-background-color: linear-gradient(to right, #ffffff, #f0f0f0);
-    -fx-padding: 10 16 10 16;
-    -fx-border-color: #28283c;
+    -fx-background-color: linear-gradient(to right, #e0e0e0, #f5f5f5);
+    -fx-padding: 12 16 12 16;
+    -fx-border-color: #c0c0c0;
     -fx-border-width: 0 0 2 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 3, 0.2, 0, 2);
 }
 
-/* Title text */
+/* Header Title */
 .title-atm {
-    -fx-font-family: "Courier New", monospace;
-    -fx-font-size: 22px;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 24px;
     -fx-font-weight: bold;
     -fx-text-fill: #28283c;
 }
 
-/*Login*/
-.panel-login {
-    -fx-background-color: #f9f9f9;
+
+/* Panels (Login, Left ATM, Chatbot) */
+.panel-login{
+    -fx-background-color: #ffffff;
     -fx-background-radius: 10;
     -fx-padding: 16;
-    -fx-border-color: #28283c;
+    -fx-border-color: #d0d0d0;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 5, 0.2, 0, 2);
 }
-
-/* Left ATM button panel */
 .panel-left {
-    -fx-background-color: #f9f9f9;
-    -fx-padding: 16;
-    -fx-background-radius: 10;
-    -fx-border-color: #28283c;
+    -fx-background-color: linear-gradient(to bottom, #e0e0e0, #c0c0c0);
+    -fx-border-color: #888;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
 }
 
-/* Chatbot panel */
-.panel-chat {
-    -fx-background-color: #f9f9f9;
-    -fx-border-color: #28283c;
-    -fx-border-width: 2;
-    -fx-background-radius: 10;
-    -fx-padding: 16;
-}
 
-/* ATM buttons */
+/* Buttons (ATM Actions)              */
+
 .btn-atm {
-    -fx-background-color: #285078;
+    -fx-background-color: #285078; /* neutral blue */
     -fx-text-fill: #ffffff;
     -fx-font-weight: bold;
-    -fx-font-size: 14px;
+    -fx-font-size: 16px;
     -fx-background-radius: 8;
-    -fx-padding: 10 14;
+    -fx-padding: 12 16;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 3, 0.2, 0, 2);
 }
-.btn-atm:hover   { -fx-background-color: #1e3f60; }
-.btn-atm:pressed { -fx-background-color: #152d46; }
+
+/* Hover and Press Effects */
+.btn-atm:hover {
+    -fx-background-color: #1e3f60;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 5, 0.2, 0, 3);
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+.btn-atm:pressed {
+    -fx-background-color: #152d46;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
 .btn-atm:disabled {
     -fx-background-color: #cccccc;
     -fx-text-fill: #666666;
+    -fx-effect: none;
 }
 
-/* Terminal-like input field */
+
+
+
+/* Input Fields & Text Areas          */
+
 .terminal-input {
-    -fx-background-color: #ffffff;
+    -fx-background-color: #f0f0f0;
     -fx-text-fill: #141414;
     -fx-font-family: "Courier New", monospace;
+    -fx-font-size: 14px;
     -fx-padding: 6 8;
     -fx-background-radius: 6;
-    -fx-border-color: #28283c;
+    -fx-border-color: #c0c0c0;
     -fx-border-radius: 6;
+}
+
+/* Focused input highlight */
+.terminal-input:focused {
+    -fx-border-color: #285078;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(40,80,120,0.2), 3, 0.2, 0, 1);
 }
 
 /* Chatbot text area */
 .terminal-textarea {
+    -fx-background-color: #f9f9f9;
     -fx-text-fill: #141414;
     -fx-font-family: "Courier New", monospace;
+    -fx-font-size: 14px;
+    -fx-padding: 8;
+    -fx-background-radius: 6;
+    -fx-border-color: #c0c0c0;
+    -fx-border-radius: 6;
 }
-.terminal-textarea .content {
-    -fx-background-color: #ffffff;
+
+/* Scrollbar styling */
+.terminal-textarea .thumb {
+    -fx-background-color: #285078;
+    -fx-background-radius: 4;
+}
+
+
+
+/* Labels / Text Styling              */
+
+.label {
+    -fx-font-size: 14px;
+    -fx-text-fill: #28283c;
+}
+
+.current-user-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #285078;
+}
+
+.text-field {
+    -fx-padding: 8 12 8 12; /* top right bottom left */
 }

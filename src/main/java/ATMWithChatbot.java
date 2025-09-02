@@ -27,8 +27,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.Base64;
-import javafx.event.EventHandler;
 
+import javafx.event.EventHandler;
 
 
 import static javax.management.remote.JMXConnectorFactory.connect;
@@ -84,6 +84,7 @@ public class ATMWithChatbot extends Application {
 //        public void addTransaction(String record) { transactionHistory.add(record); }
 //        public List<String> getTransactionHistory() { return transactionHistory; }
         public byte[] getSalt() {
+
             return salt;
         }
 
@@ -198,6 +199,8 @@ public class ATMWithChatbot extends Application {
 
     public static void main(String[] args) {
         launch(args);
+
+
     }
 
     @Override
@@ -234,7 +237,10 @@ public class ATMWithChatbot extends Application {
         if (css != null) {
             loginScene.getStylesheets().add(css.toExternalForm());
             atmScene.getStylesheets().add(css.toExternalForm());
+
+
         }
+        System.out.println(css); // should print a valid URL, not null
 
         // ---- Stage ----
         try {
@@ -265,10 +271,11 @@ public class ATMWithChatbot extends Application {
         Button loginBtn = new Button("Login");
         loginBtn.getStyleClass().add("btn-atm");
 
-        VBox box = new VBox(12, title, loginUsernameField, loginPasswordField, loginBtn);
-        box.setPadding(new Insets(16));
+        VBox box = new VBox(18, title, loginUsernameField, loginPasswordField, loginBtn);
+        box.setPadding(new Insets(20));
         box.setAlignment(Pos.CENTER);
         box.getStyleClass().add("panel-login");
+
 
         loginBtn.setOnAction(e -> doLogin(stage));
         loginPasswordField.setOnAction(e -> doLogin(stage));
@@ -317,11 +324,28 @@ public class ATMWithChatbot extends Application {
         // Left panel (ATM controls)
 
 
+// GridPane for ATM-style layout
+        GridPane quickGrid = new GridPane();
+        quickGrid.setHgap(12);
+        quickGrid.setVgap(12);
+        quickGrid.setAlignment(Pos.CENTER);
+
         // Quick amount buttons
-        Button btn500 = new Button("500");
-        Button btn2000 = new Button("2000");
         Button btn5000 = new Button("5000");
         Button btn10000 = new Button("10000");
+        Button btn20000 = new Button("20000");
+        Button btn50000 = new Button("50000");
+        Button btn100000 = new Button("100000");
+
+        quickGrid.add(btn5000, 0, 0);
+        quickGrid.add(btn10000, 1, 0);
+        quickGrid.add(btn20000, 2, 0);
+        quickGrid.add(btn50000, 0, 1);
+        quickGrid.add(btn100000, 1, 1);
+
+
+
+
 
 
 
@@ -371,10 +395,20 @@ public class ATMWithChatbot extends Application {
         };
 
 // Assign handler to all quick buttons
-        btn500.setOnAction(quickHandler);
-        btn2000.setOnAction(quickHandler);
-        btn5000.setOnAction(quickHandler);
-        btn10000.setOnAction(quickHandler);
+//        btn5000.setOnAction(quickHandler);
+//        btn10000.setOnAction(quickHandler);
+//        btn20000.setOnAction(quickHandler);
+//        btn50000.setOnAction(quickHandler);
+//        btn100000.setOnAction(quickHandler);
+
+
+        // Assign handler to all quick buttons
+        for (Button b : Arrays.asList(btn5000, btn10000, btn20000, btn50000, btn100000)) {
+            b.setOnAction(quickHandler);
+            b.getStyleClass().add("btn-atm");
+            b.setMaxWidth(Double.MAX_VALUE);
+        }
+
 
         Button checkBalanceButton = new Button("Check Balance");
         Button depositButton = new Button("Deposit");
@@ -382,7 +416,7 @@ public class ATMWithChatbot extends Application {
         Button viewTransactionsButton = new Button("View Transactions");
         Button logoutButton = new Button("Logout");
 
-        for (Button b : Arrays.asList(checkBalanceButton, depositButton, withdrawButton, viewTransactionsButton, logoutButton, btn500, btn2000, btn5000, btn10000)) {
+        for (Button b : Arrays.asList(checkBalanceButton, depositButton, withdrawButton, viewTransactionsButton, logoutButton)) {
             b.getStyleClass().add("btn-atm");
             b.setMaxWidth(Double.MAX_VALUE);
         }
@@ -436,7 +470,7 @@ public class ATMWithChatbot extends Application {
         /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         VBox atmButtons = new VBox(12,
                 amountField,
-                btn500,btn2000,btn5000,btn10000,
+                quickGrid,
                 checkBalanceButton,
                 depositButton,
                 withdrawButton,
@@ -444,7 +478,7 @@ public class ATMWithChatbot extends Application {
                 logoutButton
         );
         atmButtons.setPadding(new Insets(16));
-        atmButtons.setPrefWidth(280);
+        atmButtons.setPrefWidth(350);
         atmButtons.getStyleClass().add("panel-left");
         atmButtons.setFillWidth(true);
 
@@ -453,26 +487,29 @@ public class ATMWithChatbot extends Application {
         chatbotArea.getStyleClass().add("terminal-textarea");
 
         chatbotInput.setPromptText("Try: deposit 500, withdraw 200, balance, help");
-        chatbotInput.setPrefWidth(300);
+        chatbotInput.setPrefWidth(600);
         chatbotInput.getStyleClass().add("terminal-input");
         Button sendButton = new Button("Send");
         sendButton.getStyleClass().add("btn-atm");
         HBox chatbotBox = new HBox(8, chatbotInput, sendButton);
 
-        VBox chatbotLayout = new VBox(10, new Label("Chatbot Assistant:"), chatbotArea, chatbotBox);
-        chatbotLayout.setPadding(new Insets(16));
+        VBox chatbotLayout = new VBox(20, new Label("Chatbot Assistant:"), chatbotArea, chatbotBox);
+        chatbotLayout.setPrefWidth(700);
+    chatbotLayout.setPadding(new Insets(16));
         VBox.setVgrow(chatbotArea, Priority.ALWAYS);
         chatbotLayout.getStyleClass().add("panel-chat");
 
         // Transactions panel
-        txList.setPlaceholder(new Label("No transactions yet"));
-        txList.setFocusTraversable(false);
-        VBox txPanel = new VBox(8, new Label("Transactions:"), txList);
-        txPanel.setPadding(new Insets(16));
-        txPanel.getStyleClass().add("panel-chat");
+//        txList.setPlaceholder(new Label("No transactions yet"));
+//        txList.setFocusTraversable(false);
+//        VBox txPanel = new VBox(8, new Label("Transactions:"), txList);
+//        txPanel.setPadding(new Insets(16));
+//        txPanel.getStyleClass().add("panel-chat");
 
-        HBox mainRow = new HBox(20, atmButtons, chatbotLayout, txPanel);
+        HBox mainRow = new HBox(20, atmButtons, chatbotLayout); // removed txPanel here
         mainRow.setPadding(new Insets(16));
+        HBox.setHgrow(chatbotLayout, Priority.ALWAYS);
+
 
         // Header
         ImageView logoView = new ImageView();
@@ -610,8 +647,8 @@ public class ATMWithChatbot extends Application {
             showWarn("Sign Up", "Passwords do not match.");
             return;
         }
-        if ( loadUserFromDB(username) != null) {
-           showWarn("Sign Up", "Username already exists.");
+        if (loadUserFromDB(username) != null) {
+            showWarn("Sign Up", "Username already exists.");
             return;
         }
 
@@ -812,8 +849,10 @@ public class ATMWithChatbot extends Application {
                 .compile("(?i)\\b([0-9]+(?:\\.[0-9]+)?)\\s*k\\b")
                 .matcher(text);
         if (km.find()) {
-            try { return Double.parseDouble(km.group(1)) * 1000.0; }
-            catch (NumberFormatException ignore) {}
+            try {
+                return Double.parseDouble(km.group(1)) * 1000.0;
+            } catch (NumberFormatException ignore) {
+            }
         }
 
         // 2) General number matcher: $ 30,000.50  |  30000  |  30 000  |  250.75
@@ -822,9 +861,9 @@ public class ATMWithChatbot extends Application {
                 .matcher(text);
         if (!m.find()) return null;
 
-        String sign   = m.group(1) == null ? "" : m.group(1);
+        String sign = m.group(1) == null ? "" : m.group(1);
         String intPart = m.group(2).replaceAll("[ ,]", ""); // remove commas/spaces
-        String frac    = m.group(3);
+        String frac = m.group(3);
 
         String number = sign + intPart + (frac != null ? "." + frac : "");
         try {
@@ -911,7 +950,7 @@ public class ATMWithChatbot extends Application {
             e.printStackTrace();
   }*/
 
-public static void createUser(String pin, String password) {
+    public static void createUser(String pin, String password) {
         String sql = "INSERT OR IGNORE INTO users (pin, balance) VALUES (?, 0)";
         try (Connection conn = DBHelper.connect();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
