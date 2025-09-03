@@ -41,6 +41,10 @@ public class ATMWithChatbot extends Application {
     // Simple, human-readable line format (one user per line):
     // username|base64(salt)|base64(sha256(salt+password))|balance
     // Usernames must not contain '|'
+    private static final double MAX_BALANCE = 500_000.00;
+    private static final double MAX_WITHDRAW = 500_000.00;
+
+
     private static final Path DB_PATH =
             Paths.get(System.getProperty("user.home"), ".vaultx_users.db");
 
@@ -68,17 +72,26 @@ public class ATMWithChatbot extends Application {
             return balance;
         }
 
-        public void deposit(double amount) {
-            balance += amount;
+        public boolean deposit(double amount) {
+            if (amount <= 0) {
+                return false; // reject invalid
+            }
+            if (this.balance + amount > 500_000) {
+                return false; // reject if it exceeds max allowed balance
+            }
+            this.balance += amount;
+            return true; // success
         }
 
+
         public boolean withdraw(double amount) {
-            if (amount <= balance) {
-                balance -= amount;
-                return true;
-            }
-            return false;
+            if (amount <= 0) return false;                 // invalid
+            if (amount > MAX_WITHDRAW) return false;       // over per-transaction cap
+            if (amount > balance) return false;            // insufficient funds
+            balance -= amount;
+            return true;
         }
+
 
         //remove in memory transaction history heree ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //        public void addTransaction(String record) { transactionHistory.add(record); }
@@ -377,11 +390,17 @@ public class ATMWithChatbot extends Application {
 
             if (result.isPresent()) {
                 if (result.get() == depositBtn) {
-                    currentUser.deposit(amt);
-                    addTx("Deposited: $" + fmt(amt));
-                    showInfo("Deposited", "$" + fmt(amt) + " added.");
+                    if (currentUser.deposit(amt)) {
+                        addTx("Deposited: $" + fmt(amt));
+                        showInfo("Deposited", "$" + fmt(amt) + " added.");
+                    }else {
+                        showWarn("Limit Exceeded", "Deposit rejected. Maximum allowed balance is 500,000.");
+                    }
                 } else if (result.get() == withdrawBtn) {
-                    if (currentUser.withdraw(amt)) {
+                    if (amt > MAX_WITHDRAW){
+                        showWarn("Limit Exceeded", "Maximum withdrawal per transaction is 500,000.");
+                    }
+                    else if (currentUser.withdraw(amt)) {
                         addTx("Withdrawn: $" + fmt(amt));
                         showInfo("Withdrawn", "$" + fmt(amt) + " withdrawn.");
                     } else {
@@ -449,11 +468,17 @@ public class ATMWithChatbot extends Application {
 
             if (result.isPresent()) {
                 if (result.get() == depositBtn) {
-                    currentUser.deposit(amt);
-                    addTx("Deposited: $" + fmt(amt));
-                    showInfo("Deposited", "$" + fmt(amt) + " added.");
+                    if (currentUser.deposit(amt)) {
+                        addTx("Deposited: $" + fmt(amt));
+                        showInfo("Deposited", "$" + fmt(amt) + " added.");
+                    }else {
+                        showWarn("Limit Exceeded", "Deposit rejected. Maximum allowed balance is 500,000.");
+                    }
                 } else if (result.get() == withdrawBtn) {
-                    if (currentUser.withdraw(amt)) {
+                    if (amt > MAX_WITHDRAW){
+                        showWarn("Limit Exceeded", "Maximum withdrawal per transaction is 500,000.");
+                    }
+                    else if (currentUser.withdraw(amt)) {
                         addTx("Withdrawn: $" + fmt(amt));
                         showInfo("Withdrawn", "$" + fmt(amt) + " withdrawn.");
                     } else {
@@ -545,12 +570,20 @@ public class ATMWithChatbot extends Application {
 
         depositButton.setOnAction(e -> {
             if (!requireLoginOrWarn()) return;
+
             Double amt = parseAmount(amountField.getText());
             if (amt == null || amt <= 0) {
                 showWarn("Invalid Input", "Enter a positive amount.");
                 return;
             }
-            currentUser.deposit(amt);
+
+            // ✅ Let the model decide if the deposit is valid
+            if (!currentUser.deposit(amt)) {
+                showWarn("Limit Exceeded",
+                        "Deposit rejected. Maximum allowed balance is 500,000.");
+                return;
+            }
+
             addTx("Deposited: $" + fmt(amt));
             showInfo("Deposited", "$" + fmt(amt) + " added.");
             amountField.clear();
@@ -558,11 +591,16 @@ public class ATMWithChatbot extends Application {
             saveUserToDB(currentUser); // persist
         });
 
+
         withdrawButton.setOnAction(e -> {
             if (!requireLoginOrWarn()) return;
             Double amt = parseAmount(amountField.getText());
             if (amt == null || amt <= 0) {
                 showWarn("Invalid Input", "Enter a positive amount.");
+                return;
+            }
+            if (amt > MAX_WITHDRAW) {  // <-- new
+                showWarn("Limit Exceeded", "Maximum withdrawal per transaction is 500,000.");
                 return;
             }
             if (currentUser.withdraw(amt)) {
@@ -725,13 +763,15 @@ public class ATMWithChatbot extends Application {
             if (amt <= 0) {
                 response = "Enter a positive amount.";
             } else {
-                currentUser.deposit(amt);
-                addTx("Chatbot deposited: $" + fmt(amt));
-                refreshTxList();
-                saveUserToDB(currentUser);
-                response = "Deposited $" + fmt(amt) + ".";
+                if (!currentUser.deposit(amt)) {
+                    response = "Deposit rejected. Maximum allowed balance is 500,000.";
+                } else {
+                    addTx("Chatbot deposited: $" + fmt(amt));
+                    refreshTxList();
+                    saveUserToDB(currentUser);
+                    response = "Deposited $" + fmt(amt) + ".";
+                }
             }
-
         } else if (containsAny(input, "withdraw", "take out", "take", "minus")) {
             if (!requireLoginOrWarn()) {
                 chatbotInput.clear();
@@ -740,7 +780,10 @@ public class ATMWithChatbot extends Application {
             double amt = (amount != null ? amount : 100.0);
             if (amt <= 0) {
                 response = "Enter a positive amount.";
-            } else if (currentUser.withdraw(amt)) {
+            } else if (amt > MAX_WITHDRAW){
+                response = "Withdrawal rejected. Maximum per transaction is 500,000.";
+            }
+            else if (currentUser.withdraw(amt)) {
                 addTx("Chatbot withdrew: $" + fmt(amt));
                 refreshTxList();
                 saveUserToDB(currentUser);
