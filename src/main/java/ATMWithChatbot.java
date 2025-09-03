@@ -281,6 +281,7 @@ public class ATMWithChatbot extends Application {
         loginPasswordField = new PasswordField();
         loginPasswordField.setPromptText("Password");
 
+
         Button loginBtn = new Button("Login");
         loginBtn.getStyleClass().add("btn-atm");
 
@@ -332,6 +333,8 @@ public class ATMWithChatbot extends Application {
 
         return box;
     }
+
+
 
     private VBox buildAtmRoot(Stage stage) {
         // Left panel (ATM controls)
@@ -669,6 +672,22 @@ public class ATMWithChatbot extends Application {
         }
     }
 
+
+
+    // Regex for strong password
+// - At least 8 chars
+// - At least one uppercase
+// - At least one lowercase
+// - At least one digit
+// - At least one special character
+    private static final String PASSWORD_REGEX =
+            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
+
+    private boolean isStrongPassword(String pw) {
+        return pw != null && pw.matches(PASSWORD_REGEX);
+    }
+
+
     private void doSignup() {
         String username = safe(signupUsernameField.getText());
         String pw = signupPasswordField.getText();
@@ -692,8 +711,13 @@ public class ATMWithChatbot extends Application {
         }
 
         // Optional: basic password strength
-        if (pw.length() < 6) {
-            showWarn("Sign Up", "Use at least 6 characters.");
+        if (!isStrongPassword(pw)) {
+            showWarn("Sign Up",
+                    "Password must be at least 8 characters and include:\n" +
+                            "• 1 uppercase\n" +
+                            "• 1 lowercase\n" +
+                            "• 1 digit\n" +
+                            "• 1 special character");
             return;
         }
 

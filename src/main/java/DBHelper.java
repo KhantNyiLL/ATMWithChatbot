@@ -1,7 +1,7 @@
 import java.sql.*;
 
 public class DBHelper {
-    private static final String DB_URL = "jdbc:sqlite:C:\\Users\\Chan Myae May\\IdeaProjects\\ATMWithChatbot2.0\\bankatm.db";
+    private static final String DB_URL = "jdbc:sqlite:C:\\Users\\Chan Myae May\\IdeaProjects\\ATMWithChatbot5.0\\bankatm.db";
 
 
     public static Connection connect() throws SQLException {
