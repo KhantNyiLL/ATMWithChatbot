@@ -706,6 +706,7 @@ public class ATMWithChatbot extends Application {
 
         } else if (containsAny(input, "logout", "sign out", "signout")) {
             response = "You have been logged out.";
+            doLogout();
 
         } else if (containsAny(input, "balance", "check balance", "show balance", "how much")) {
             if (!requireLoginOrWarn()) {
@@ -896,6 +897,28 @@ public class ATMWithChatbot extends Application {
 
     private boolean verifyPassword(byte[] salt, byte[] expectedHash, String candidatePassword) {
         return Arrays.equals(expectedHash, hashPassword(salt, candidatePassword));
+    }
+
+
+
+    // === Reusable logout ===
+    private void doLogout() {
+        if (currentUser != null) {
+            saveUserToDB(currentUser);  // keep if you already save to DB
+        }
+
+        // reset UI + state
+        currentUser = null;
+        currentUserLabel.setText("");
+        amountField.clear();
+        txList.getItems().clear();
+        chatbotArea.clear();
+        loginUsernameField.clear();
+        loginPasswordField.clear();
+
+        // go back to login scene
+        Stage stage = (Stage) chatbotInput.getScene().getWindow();
+        stage.setScene(loginScene);
     }
 
     /* ========= Persistence (File I/O) ========= */
