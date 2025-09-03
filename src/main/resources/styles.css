@@ -35,6 +35,18 @@
     -fx-border-width: 1;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 5, 0.2, 0, 2);
 }
+
+.txPanel{
+    -fx-background-color: #f0f0f0;
+    -fx-text-fill: #141414;
+    -fx-font-family: "Courier New", monospace;
+    -fx-font-size: 11px;
+    -fx-padding: 6 8;
+    -fx-background-radius: 5;
+    -fx-border-color: #c0c0c0;
+    -fx-border-radius: 6;
+
+}
 .panel-left {
     -fx-background-color: linear-gradient(to bottom, #e0e0e0, #c0c0c0);
     -fx-border-color: #888;
@@ -56,6 +68,7 @@
     -fx-cursor: hand;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 3, 0.2, 0, 2);
 }
+
 
 /* Hover and Press Effects */
 .btn-atm:hover {
