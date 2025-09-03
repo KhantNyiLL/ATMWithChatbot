@@ -413,10 +413,10 @@ public class ATMWithChatbot extends Application {
         Button checkBalanceButton = new Button("Check Balance");
         Button depositButton = new Button("Deposit");
         Button withdrawButton = new Button("Withdraw");
-        Button viewTransactionsButton = new Button("View Transactions");
+//        Button viewTransactionsButton = new Button("View Transactions");
         Button logoutButton = new Button("Logout");
 
-        for (Button b : Arrays.asList(checkBalanceButton, depositButton, withdrawButton, viewTransactionsButton, logoutButton)) {
+        for (Button b : Arrays.asList(checkBalanceButton, depositButton, withdrawButton, logoutButton)) {
             b.getStyleClass().add("btn-atm");
             b.setMaxWidth(Double.MAX_VALUE);
         }
@@ -474,7 +474,6 @@ public class ATMWithChatbot extends Application {
                 checkBalanceButton,
                 depositButton,
                 withdrawButton,
-                viewTransactionsButton,
                 logoutButton
         );
         atmButtons.setPadding(new Insets(16));
@@ -487,26 +486,28 @@ public class ATMWithChatbot extends Application {
         chatbotArea.getStyleClass().add("terminal-textarea");
 
         chatbotInput.setPromptText("Try: deposit 500, withdraw 200, balance, help");
-        chatbotInput.setPrefWidth(600);
+        chatbotInput.setPrefWidth(400);
         chatbotInput.getStyleClass().add("terminal-input");
         Button sendButton = new Button("Send");
         sendButton.getStyleClass().add("btn-atm");
+        VBox.setVgrow(chatbotInput, Priority.ALWAYS);
+
         HBox chatbotBox = new HBox(8, chatbotInput, sendButton);
 
         VBox chatbotLayout = new VBox(20, new Label("Chatbot Assistant:"), chatbotArea, chatbotBox);
-        chatbotLayout.setPrefWidth(700);
+        chatbotLayout.setPrefWidth(350);
     chatbotLayout.setPadding(new Insets(16));
         VBox.setVgrow(chatbotArea, Priority.ALWAYS);
         chatbotLayout.getStyleClass().add("panel-chat");
 
         // Transactions panel
-//        txList.setPlaceholder(new Label("No transactions yet"));
-//        txList.setFocusTraversable(false);
-//        VBox txPanel = new VBox(8, new Label("Transactions:"), txList);
-//        txPanel.setPadding(new Insets(16));
-//        txPanel.getStyleClass().add("panel-chat");
+        txList.setPlaceholder(new Label("No transactions yet"));
+        txList.setFocusTraversable(false);
+        VBox txPanel = new VBox(8, new Label("Transactions:"), txList);
+        txPanel.setPadding(new Insets(16));
+        txPanel.getStyleClass().add("txPanel");
 
-        HBox mainRow = new HBox(20, atmButtons, chatbotLayout); // removed txPanel here
+        HBox mainRow = new HBox(20, atmButtons, chatbotLayout, txPanel); // removed txPanel here
         mainRow.setPadding(new Insets(16));
         HBox.setHgrow(chatbotLayout, Priority.ALWAYS);
 
@@ -575,8 +576,8 @@ public class ATMWithChatbot extends Application {
             }
         });
 
-        viewTransactionsButton.setOnAction(
-                e -> refreshTxList());
+//        viewTransactionsButton.setOnAction(
+//                e -> refreshTxList());
 
         logoutButton.setOnAction(e -> {
             if (currentUser != null)
